@@ -1,0 +1,24 @@
+```{r setup}
+require(ggplot2); require(ggthemes); require(UsingR)
+```
+
+
+```{r Main-Script}
+data(mtcars)
+
+bigFit <- lm(mpg~as.factor(am)*wt*disp*as.factor(gear)*as.factor(carb), data=mtcars)
+smallFit <- lm(mpg~as.factor(am)*wt*disp, data=mtcars)
+twoFit <- lm(mpg~as.factor(am)*disp, data=mtcars)
+singleFit <- lm(mpg~as.factor(am), data=mtcars)
+
+anova(singleFit, twoFit, smallFit, bigFit)
+```
+
+Small fit has best goodness of fit
+
+```{r Exploratory}
+plot(twoFit)
+plot(smallFit)
+
+
+```
