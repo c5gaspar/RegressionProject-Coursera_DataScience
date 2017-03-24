@@ -1,3 +1,10 @@
+---
+output:
+html_document:
+          toc:true
+          toc_float:true
+---
+
 <h1> <center> Motor Trend Fuel Consumption Regression Analysis </center> </h1>
 <h4> <center> Connor Gaspar -- March 23, 2017 </center> </h4>
 ***
@@ -10,11 +17,11 @@ The analysis performed utilizes the Motor Trend (US) magazine 1974 automobile da
 
 To this end exploratory data analysis, regression analysis and hypothesis testing will be performed to make inferences from this data set. 
 
-#### ADD MORE Exec Summary HERE ####
+**ADD MORE Exec Summary HERE**
 ***
 
 ```{r Initialize, include=F, warning=F, message=F}
-require(knitr); require(rmarkdown); require(ggplot2)
+require(knitr); require(rmarkdown); require(ggplot2); require(car)
 require(ggthemes); require(UsingR); require(GGally); require(effsize)
 data(mtcars) # Load data
 mtcars[,c(8:9)] <- lapply(mtcars[,c(8:9)], factor) # Converting am && vs to factor type
@@ -29,12 +36,13 @@ Below is the first five rows of the `mtcars` data set. Our response variable is 
 
 
 ```{r Data-Head-Overview}
-kable(head(mtcars), align="c")
+kable(head(mtcars), caption="Overview of Data Set", align="c")
 ```
 
 
+<b><h4> Data Exploration </h4></b>
 
-```{r Data-Exploration, message=FALSE, warning=FALSE}
+```{r Pair-Wise-Exploratory-Plotting, message=FALSE, warning=FALSE}
 ggpairs(mtcars,
         lower=list(continuous = "smooth",
                    combo = "box",
@@ -48,7 +56,9 @@ ggpairs(mtcars,
 
 From the first row of the pairwise plot we can see a clear difference between fuel consumption by automatic and manual transmission. For the continuous variable scatterplots on the bottom, points are coloured by the level of `am`. Thus, we can see overt heterogeneity in the level of the response variable thereby signifiying interactions with our critical regressor. 
 
-Now that we've established variation along `am`, constructing a violin plot of this specific relationship is useful.
+Now that we've observed variation along `am`, constructing a violin plot of this specific relationship would eluciate this variation.
+
+<b><h5> Visualization of Hypothesized Effect </h5></b>
 
 ```{r}
 ggplot(data=mtcars, aes(x=am, y=mpg, fill=am))+
@@ -57,29 +67,67 @@ ggplot(data=mtcars, aes(x=am, y=mpg, fill=am))+
           theme_base()
 ```
 
-From this violin plot we have a visual pattern demonstrating that the cars in this data set with manual transmissions have higher fuel efficiency than the cars with automatic transmissions. In order to test this hypothesis we'll need to check whether such differences are likely to arise by chance given that no true differences exist. Given that we don't have access to population standard deviation the Welch's t-test will be used. Given that our hypothesis is direction (i.e., we predict that automatics be **less** fuel efficient than manuals), a one-tailed hypothesis will be used to increase overall power of our test. 
+From this violin plot we have a visual pattern demonstrating that the cars in this data set with manual transmissions have higher fuel efficiency than the cars with automatic transmissions. In order to test this hypothesis, I'll need to test whether such differences are likely to arise by chance given that no true differences exist between our groups. Given that we don't have access to population standard deviation, the t-distribution will be utilized. 
+
+Given the observed differences, a directional hypothesis is formulated that automatic cars are <u>less</u> fuel efficient than manual cars. Therefore, a one-tailed hypothesis will be used to increase the overall power of the t-test.
+
+<b><h4> Hypothesis Testing </h4></b>
 
 ```{r}
 t.test1 <- t.test(mpg~am, data=mtcars, paired=F, alternative="less")
 
-t.test1.results <- round(data.frame("df"=t.test1$parameter, "test.statistic"=abs(t.test1$statistic), "p.value"=t.test1$p.value, "CI.lower"=t.test1$conf.int[1], "CI.upper"=t.test1$conf.int[2], "AT.mean"=t.test1$estimate[1], "MT.mean"=t.test1$estimate[2], 
-                                    "power"=power.t.test(n=11, 
-                                                         delta=abs(cohen.d(mpg~am, data=mtcars, paired=F)$estimate), 
+t.test1.results <- data.frame("df"=t.test1$parameter,
+                                    "test.statistic"=t.test1$statistic, 
+                                    "p.value"=t.test1$p.value, 
+                                    "CI.lower"=t.test1$conf.int[1],
+                                    "CI.upper"=t.test1$conf.int[2],
+                                    "AT.mean"=t.test1$estimate[1], 
+                                    "MT.mean"=t.test1$estimate[2], 
+                                    "power"=power.t.test(n=11,
+                                                         delta=abs(cohen.d(mpg~am, data=mtcars, paired=F)$estimate),
                                                          alternative="one.sided")$power,
-                                              row.names=""),3)
+                                    row.names="")
+
+kable(t.test1.results, caption = "Welch's t-test Output", align="c", digits=3)
 ```
 
-The results from the Welch's t-test demonstrate that there's a statistically significant difference in transmission types with respect to fuel economy, *t*(18.3) = 3.77, p < .001, such that cars with manual transmissions are more fuel efficient than automatic transmissions.
 
-```{r}
-kable(t.test1.results, align="c")
-```
+The result from the Welch's t-test demonstrate that there's a statistically significant difference in transmission types with respect to fuel economy, *t*(18.3) = 3.77, p < .001, such that cars with manual transmissions are more fuel efficient than cars with automatic transmissions.
 
-From these results a simple linear regression model was generated with `mpg` as the outcome and `am` as the regressor.
+
+Now that a differnce has been established between `am` groups, a simple linear regression model was generated with `mpg` as the outcome and `am` as the regressor.
+
+<b><h5> Simple Linear Regression </h5></b>
 
 ```{r}
 simpleFit <- lm(mpg~am, data=mtcars)
-kable(coef(summary(simpleFit)), align="c")
+kable(coef(summary(simpleFit)), caption = "Simple Linear Regression Table", align="c")
 ```
 
-Given that our regressor is categorical (factor), our intercept estimates average fuel consumption for automatic transmission. Therefore, our estimate for `ammanual` is the difference in fuel consumption from the intercept for cars with manual transmissions. Since our estimate for `ammanual` is `r coef(summary(simpleFit))[2]`, this is the estimated difference in `mpg` from our intercept estimate. This is consistent with the above table that demonstrates a difference of `7.24` between `am` groups. Since the t value of the differences between our groups is statistically significant, we can conclude from this model that cars with manual transmission are more fuel efficient than automatic transmissions. 
+Given that our regressor is categorical, the intercept estimate represents the average fuel consumption for cars with automatic transmissions. Therefore, the variable below the intercept, `ammanual`, represents the difference in fuel consumption from the intercept term. 
+
+Since our estimate for `ammanual` is positive, this means that fuel economy *increases* by ``r round(coef(summary(simpleFit))[2], 3)`` miles per gallon when considering a manual transmission car rather than an automatic transmission car.
+
+The extent of significance observed in the regression summary indicates that this magnitude of difference between transmissions would be observed  *less than* 1 in 1000 times (< .1%) should no difference truly exist in fuel economy between the groups. Given the level of significance attained, we can conclude with high certainty that cars with manual transmission are more fuel efficient than automatic transmissions. 
+
+<b><h5> Multivariate Linear Regression </h5></b>
+
+Fitting a model with a singular regressor is certainly informative. However, with the availability of many other pertinent variables, it is best to determine whether models with other and more than one regressor exist that explain more variation in `mpg`.
+
+```{r FullFit-MultivariateRegression}
+fullFit <- lm(mpg ~ ., data=mtcars)
+
+kable(coef(summary(fullFit)), align="c")
+```
+
+By including all possible regessors in the equation, the standard error of the equation increases significantly. Therefore, in producing a model careful thought needs to be employed in determing which variables to include in the model.
+
+Another important consideration is *collinearity*, which is the extent to which two variables in the same model are correlated (i.e., on the same line). Having multicollinearity in a regression model may negatively influence the predictive power of individual regessors and therefore should be avoided when possible. Using variance inflation factors (VIFs) we can analyze the extent of mutlicollinearity in variables for our model.
+
+```{r VIF}
+kable(vif(fullFit), digits=3, align="c", col.names = "")
+```
+
+As a rule of thumb, when a VIF is greater than `10`, mutlicollinearity is high. Additionally, VIFs ranging 5 - 10 are of concern, albeit of less detrimental impact to a model. 
+
+
