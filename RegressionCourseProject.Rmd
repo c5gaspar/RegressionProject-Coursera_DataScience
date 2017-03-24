@@ -15,7 +15,7 @@ To this end exploratory data analysis, regression analysis and hypothesis testin
 
 ```{r Initialize, include=F, warning=F, message=F}
 require(knitr); require(rmarkdown); require(ggplot2)
-require(ggthemes); require(UsingR); require(GGally)
+require(ggthemes); require(UsingR); require(GGally); require(effsize)
 data(mtcars) # Load data
 mtcars[,c(8:9)] <- lapply(mtcars[,c(8:9)], factor) # Converting am && vs to factor type
 mtcars$am <- factor(mtcars$am, label=c("automatic", "manual"))
@@ -47,3 +47,39 @@ ggpairs(mtcars,
 ```
 
 From the first row of the pairwise plot we can see a clear difference between fuel consumption by automatic and manual transmission. For the continuous variable scatterplots on the bottom, points are coloured by the level of `am`. Thus, we can see overt heterogeneity in the level of the response variable thereby signifiying interactions with our critical regressor. 
+
+Now that we've established variation along `am`, constructing a violin plot of this specific relationship is useful.
+
+```{r}
+ggplot(data=mtcars, aes(x=am, y=mpg, fill=am))+
+          geom_violin(colour="black", size=1.5)+
+          labs(x="Transmission Type", y="Fuel Efficiency (MPG)")+
+          theme_base()
+```
+
+From this violin plot we have a visual pattern demonstrating that the cars in this data set with manual transmissions have higher fuel efficiency than the cars with automatic transmissions. In order to test this hypothesis we'll need to check whether such differences are likely to arise by chance given that no true differences exist. Given that we don't have access to population standard deviation the Welch's t-test will be used. Given that our hypothesis is direction (i.e., we predict that automatics be **less** fuel efficient than manuals), a one-tailed hypothesis will be used to increase overall power of our test. 
+
+```{r}
+t.test1 <- t.test(mpg~am, data=mtcars, paired=F, alternative="less")
+
+t.test1.results <- round(data.frame("df"=t.test1$parameter, "test.statistic"=abs(t.test1$statistic), "p.value"=t.test1$p.value, "CI.lower"=t.test1$conf.int[1], "CI.upper"=t.test1$conf.int[2], "AT.mean"=t.test1$estimate[1], "MT.mean"=t.test1$estimate[2], 
+                                    "power"=power.t.test(n=11, 
+                                                         delta=abs(cohen.d(mpg~am, data=mtcars, paired=F)$estimate), 
+                                                         alternative="one.sided")$power,
+                                              row.names=""),3)
+```
+
+The results from the Welch's t-test demonstrate that there's a statistically significant difference in transmission types with respect to fuel economy, *t*(18.3) = 3.77, p < .001, such that cars with manual transmissions are more fuel efficient than automatic transmissions.
+
+```{r}
+kable(t.test1.results, align="c")
+```
+
+From these results a simple linear regression model was generated with `mpg` as the outcome and `am` as the regressor.
+
+```{r}
+simpleFit <- lm(mpg~am, data=mtcars)
+kable(coef(summary(simpleFit)), align="c")
+```
+
+Given that our regressor is categorical (factor), our intercept estimates average fuel consumption for automatic transmission. Therefore, our estimate for `ammanual` is the difference in fuel consumption from the intercept for cars with manual transmissions. Since our estimate for `ammanual` is `r coef(summary(simpleFit))[2]`, this is the estimated difference in `mpg` from our intercept estimate. This is consistent with the above table that demonstrates a difference of `7.24` between `am` groups. Since the t value of the differences between our groups is statistically significant, we can conclude from this model that cars with manual transmission are more fuel efficient than automatic transmissions. 
