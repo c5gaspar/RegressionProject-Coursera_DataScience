@@ -1,24 +1,27 @@
+<h1> <center> Motor Trend Fuel Consumption Regression Analysis </center> </h1>
+<h4> <center> Connor Gaspar -- March 23, 2017 </center> </h4>
+***
+
+<h4> Executive Summary </h4>
+The analysis performed utilizes the Motor Trend (US) magazine 1974 automobile data. This data was used for the purpose of regressing the given set of variables with respect to fuel consumption (as defined by mpg) Of particular interest to this topic, the following questions will be answered:
+
+* Is an automatic or manual transmission better for MPG
+* Quantify the MPG difference between automatic and manual transmissions
+
+To this end exploratory data analysis, regression analysis and hypothesis testing will be performed to make inferences from this dataset. 
+
+### ADD MORE HERE ###
+
 ```{r setup}
-require(ggplot2); require(ggthemes); require(UsingR)
+```
+
+```{r initialize, include=F, warning=F, message=F}
+require(knitr); require(rmarkdown); require(ggplot2); require(ggthemes); require(UsingR)
+data(mtcars) # Load data
+mtcars[,c(8:9)] <- lapply(mtcars[,c(8:9)], factor) # Converting am && vs to factor type
 ```
 
 
-```{r Main-Script}
-data(mtcars)
-
-bigFit <- lm(mpg~as.factor(am)*wt*disp*as.factor(gear)*as.factor(carb), data=mtcars)
-smallFit <- lm(mpg~as.factor(am)*wt*disp, data=mtcars)
-twoFit <- lm(mpg~as.factor(am)*disp, data=mtcars)
-singleFit <- lm(mpg~as.factor(am), data=mtcars)
-
-anova(singleFit, twoFit, smallFit, bigFit)
-```
-
-Small fit has best goodness of fit
-
-```{r Exploratory}
-plot(twoFit)
-plot(smallFit)
-
-
+```{r}
+kable(head(mtcars), align="c")
 ```
