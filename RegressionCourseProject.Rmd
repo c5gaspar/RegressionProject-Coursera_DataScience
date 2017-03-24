@@ -6,23 +6,26 @@ html_document:
 ---
 
 <h1> <center> Motor Trend Fuel Consumption Regression Analysis </center> </h1>
-<h4> <center> Connor Gaspar -- March 23, 2017 </center> </h4>
+<b><h4> <center> Connor Gaspar -- March 23, 2017 </center> </h4></b>
+
 ***
 
 <b><h4> Executive Summary </h4></b>
-The analysis performed utilizes the Motor Trend (US) magazine 1974 automobile data. This data was used for the purpose of regressing the measured set of variables with respect to fuel consumption (as defined by mpg). In particular, the following questions will be addressed:
+The following analysis utilizes data collected by Motor Trend US published in 1974. The dataset compares different cars (rows) across different objective measures (columns). In particular, this analysis is concerned with regressing fuel economy/efficiency as defined by miles per gallon. Specifically, the following questions (and more) will be answered through statistical inference and regression analysis:
 
 * Is an automatic or manual transmission better for MPG
 * Quantify the MPG difference between automatic and manual transmissions
 
-To this end exploratory data analysis, regression analysis and hypothesis testing will be performed to make inferences from this data set. 
+To this end, exploratory data analysis, hypothesis testing, regression analysis, model fit analysis were performed to make reasoned inferences from this data. The results were that manual transmissions offered an increased fuel efficiency of 2.94mpg relative to automatic transmissions.
 
-**ADD MORE Exec Summary HERE**
+Closer examination the regression equation led to a more effective model including acceleration  and weight as regressors. Using this methodology the coefficient of determination increased from ``0.36`` to ``0.85``.
+
 ***
 
 ```{r Initialize, include=F, warning=F, message=F}
-require(knitr); require(rmarkdown); require(ggplot2); require(car)
-require(ggthemes); require(UsingR); require(GGally); require(effsize)
+require(knitr); require(rmarkdown); require(ggplot2); require(car); library(MASS)
+require(ggthemes); require(UsingR); require(GGally); require(effsize); require(grid)
+require(gridExtra)
 data(mtcars) # Load data
 mtcars[,c(8:9)] <- lapply(mtcars[,c(8:9)], factor) # Converting am && vs to factor type
 mtcars$am <- factor(mtcars$am, label=c("automatic", "manual"))
@@ -35,7 +38,7 @@ Below is the first five rows of the `mtcars` data set. Our response variable is 
 *N.B.* The variables `am` and `vs`  have been modified from continuous (numeric) to categorical (factor) to reflect their binary nature. For `am`, labels have been applied to enhance interpretability of the factor levels.
 
 
-```{r Data-Head-Overview}
+```{r Data-Head-Overview, echo=FALSE}
 kable(head(mtcars), caption="Overview of Data Set", align="c")
 ```
 
@@ -48,15 +51,16 @@ ggpairs(mtcars,
                    combo = "box",
                    discrete = "blank",
                    mapping=aes(colour=am)),
+        upper=list(combo = "blank"),
         
         diag=list(continuous="barDiag"),
         
         axisLabels="show")
 ```
 
-From the first row of the pairwise plot we can see a clear difference between fuel consumption by automatic and manual transmission. For the continuous variable scatterplots on the bottom, points are coloured by the level of `am`. Thus, we can see overt heterogeneity in the level of the response variable thereby signifiying interactions with our critical regressor. 
+Looking at the first column of the pairwise plot, clear differences between fuel consumption by automatic and manual transmission can be observed. Scatterplot points have been coloured by the level of `am` to detect any heterogeneity. Briefly examing `mpg` as a function of colour demonstrates clear heterogeneity, thereby showing preliminary evidence for an effect of `am`.
 
-Now that we've observed variation along `am`, constructing a violin plot of this specific relationship would eluciate this variation.
+To elucidate this effect, a violin plot of fuel economy by transmission type was constructed.
 
 <b><h5> Visualization of Hypothesized Effect </h5></b>
 
@@ -64,14 +68,22 @@ Now that we've observed variation along `am`, constructing a violin plot of this
 ggplot(data=mtcars, aes(x=am, y=mpg, fill=am))+
           geom_violin(colour="black", size=1.5)+
           labs(x="Transmission Type", y="Fuel Efficiency (MPG)")+
-          theme_base()
+          theme_bw()
 ```
 
-From this violin plot we have a visual pattern demonstrating that the cars in this data set with manual transmissions have higher fuel efficiency than the cars with automatic transmissions. In order to test this hypothesis, I'll need to test whether such differences are likely to arise by chance given that no true differences exist between our groups. Given that we don't have access to population standard deviation, the t-distribution will be utilized. 
+From this violin plot a clear visual pattern arises that cars with manual transmissions have a higher fuel efficiency than cars with automatic transmissions. To test this hypothesis, In order to statistically test this hypothesis, a test will be utilized to detect whether differences are likely to arise given that no true differences exist between our groups. Given that population parameters are unknown, the t-distribution will be used. 
 
-Given the observed differences, a directional hypothesis is formulated that automatic cars are <u>less</u> fuel efficient than manual cars. Therefore, a one-tailed hypothesis will be used to increase the overall power of the t-test.
+Given the observed differences, a directional hypothesis is formulated that automatic cars are <u>less</u> fuel efficient than manual cars. This can be expressed as:
+
+H<sub>0</sub> = H<sub>D</sub> = 0;
+
+H<sub>1</sub> = H<sub>D</sub> < 0
+
+With the directional hypothesis, a one-tailed test will be conducted to increase the overall power of the test from ``.91`` to ``.96``.
 
 <b><h4> Hypothesis Testing </h4></b>
+
+***
 
 ```{r}
 t.test1 <- t.test(mpg~am, data=mtcars, paired=F, alternative="less")
@@ -92,10 +104,11 @@ kable(t.test1.results, caption = "Welch's t-test Output", align="c", digits=3)
 ```
 
 
-The result from the Welch's t-test demonstrate that there's a statistically significant difference in transmission types with respect to fuel economy, *t*(18.3) = 3.77, p < .001, such that cars with manual transmissions are more fuel efficient than cars with automatic transmissions.
+The Welch's t-test demonstrates that there's a statistically significant difference in fuel economy between transmission types, 
+*t*(18.3) = 3.77, p < .001, such that cars with manual transmissions are more fuel efficient than cars with automatic transmissions.
 
 
-Now that a differnce has been established between `am` groups, a simple linear regression model was generated with `mpg` as the outcome and `am` as the regressor.
+With a statistically significant difference established between transmission types, a simple linear regression model is generated with `mpg` as the outcome and `am` as the regressor.
 
 <b><h5> Simple Linear Regression </h5></b>
 
@@ -104,7 +117,7 @@ simpleFit <- lm(mpg~am, data=mtcars)
 kable(coef(summary(simpleFit)), caption = "Simple Linear Regression Table", align="c")
 ```
 
-Given that our regressor is categorical, the intercept estimate represents the average fuel consumption for cars with automatic transmissions. Therefore, the variable below the intercept, `ammanual`, represents the difference in fuel consumption from the intercept term. 
+With a categorical regressor, the estimate of the intercept represents the average fuel consumption for cars with automatic transmissions. Therefore, the variable below the intercept, `ammanual`, represents the difference in fuel economy from the intercept term. 
 
 Since our estimate for `ammanual` is positive, this means that fuel economy *increases* by ``r round(coef(summary(simpleFit))[2], 3)`` miles per gallon when considering a manual transmission car rather than an automatic transmission car.
 
@@ -112,7 +125,7 @@ The extent of significance observed in the regression summary indicates that thi
 
 <b><h5> Multivariate Linear Regression </h5></b>
 
-Fitting a model with a singular regressor is certainly informative. However, with the availability of many other pertinent variables, it is best to determine whether models with other and more than one regressor exist that explain more variation in `mpg`.
+Fitting a model with a singular regressor is certainly informative. However, with the availability of many other pertinent variables, it is best to determine whether models with other and more than one regressors exist that explain more variation in fuel economy.
 
 ```{r FullFit-MultivariateRegression}
 fullFit <- lm(mpg ~ ., data=mtcars)
@@ -120,14 +133,80 @@ fullFit <- lm(mpg ~ ., data=mtcars)
 kable(coef(summary(fullFit)), align="c")
 ```
 
-By including all possible regessors in the equation, the standard error of the equation increases significantly. Therefore, in producing a model careful thought needs to be employed in determing which variables to include in the model.
+By including all possible regessors in the equation, the standard error of the equation increases significantly. Therefore, in producing a model, careful thought needs to be employed to determine which variables to include in the model.
 
-Another important consideration is *collinearity*, which is the extent to which two variables in the same model are correlated (i.e., on the same line). Having multicollinearity in a regression model may negatively influence the predictive power of individual regessors and therefore should be avoided when possible. Using variance inflation factors (VIFs) we can analyze the extent of mutlicollinearity in variables for our model.
+Another important consideration is *collinearity*, which is defined as the extent to which two variables in a model are correlated. Although multicollinearity doesn't dimish overall predictive power of a model, it does severely diminishes variable specific predictive power. Thus, in the pursuit of the model most effective in describing differences between transmission type in fuel economy, mutlicollinearity should be avoided.
+
+Using variance inflation factors (VIFs), it is possible to analyze the extent to which variables are collinear in a model.
 
 ```{r VIF}
-kable(vif(fullFit), digits=3, align="c", col.names = "")
+kable(data.frame("var"=names(vif(fullFit)), "VIF"=unname(vif(fullFit))), digits=3, align="c")
 ```
 
-As a rule of thumb, when a VIF is greater than `10`, mutlicollinearity is high. Additionally, VIFs ranging 5 - 10 are of concern, albeit of less detrimental impact to a model. 
+As a rule of thumb, when a VIF is greater than `10`, mutlicollinearity is high. Additionally, VIFs ranging ``5 - 10`` are of concern, albeit less detriment to a model. Therefore careful consideration will be taken in inclusion of these variables in a final regresson model
 
+<b><h5> Stepwise Selection </h5></b>
+
+Bidirectional stepwise regression using all measured variables was conducted to fit the regression model of fuel economy. 
+
+```{r}
+steps <- stepAIC(fullFit, direction="both", trace=F)
+kable(coef(summary(steps)), align="c", caption="Stepwise Regression Selection")
+```
+
+The stepwise regression demonstrated that the variables `wt` (weight), `qsec` (acceleration), and `am` are statistically significant contributors to explaining variance in fuel economy.
+
+Through inclusion within the model, the coffefficient of determination (*r^{2}$$*) increased from ``r round(summary(simpleFit)$r.squared, 2)`` to ``r round(summary(steps)$r.squared, 2)``! Therefore the updated model now explains 86% of the observed variation in `mpg`. 
+
+<b><h4> Final Model Fit and Implications </h4></b>
+
+```{r}
+finalFit <- lm(mpg~wt+qsec+am, data=mtcars)
+kable(coef(summary(finalFit)), align="c", caption="Coefficients of Regression Fit")
+```
+
+The final fitted model has significantly changed the previous interpretation of the difference between cars with automatic and manual transmissions. The updated conclusion drawn from our model is that manual cars are ``r round(coef(summary(finalFit))[4],2)`` MPG more fuel efficient than automatic cars for the observed data set. 
+
+This statement is made with greater confidence than preliminary estimates as more of the variance in MPG has been explained through inclusion of other variables in the model.
+
+Included below are the diagnostic plots for the updated regression model
+
+```{r, echo=FALSE, fig.height=3, fig.width=3, message=FALSE, warning=FALSE}
+
+model <- finalFit
+
+p1<-ggplot(model, aes(.fitted, .resid))+geom_point()
+p1<-p1+stat_smooth(method="loess")+geom_hline(yintercept=0, col="red", linetype="dashed")
+p1<-p1+xlab("Fitted values")+ylab("Residuals")
+p1<-p1+ggtitle("Residual vs Fitted Plot")+theme_bw()
+
+p3<-ggplot(model, aes(.fitted, sqrt(abs(.stdresid))))+geom_point(na.rm=TRUE)
+p3<-p3+stat_smooth(method="loess", na.rm = TRUE)+xlab("Fitted Value")
+p3<-p3+ylab(expression(sqrt("|Standardized residuals|")))
+p3<-p3+ggtitle("Scale-Location")+theme_bw()
+
+p4<-ggplot(model, aes(seq_along(.cooksd), .cooksd))+geom_bar(stat="identity", position="identity")
+p4<-p4+xlab("Obs. Number")+ylab("Cook's distance")
+p4<-p4+ggtitle("Cook's distance")+theme_bw()
+
+p5<-ggplot(model, aes(.hat, .stdresid))+geom_point(aes(size=.cooksd), na.rm=TRUE)
+p5<-p5+stat_smooth(method="loess", na.rm=TRUE)
+p5<-p5+xlab("Leverage")+ylab("Standardized Residuals")
+p5<-p5+ggtitle("Residual vs Leverage Plot")
+p5<-p5+scale_size_continuous("Cook's Distance", range=c(1,5))
+p5<-p5+theme_bw()+theme(legend.position="bottom")
+
+p6<-ggplot(model, aes(.hat, .cooksd))+geom_point(na.rm=TRUE)+stat_smooth(method="loess", na.rm=TRUE)
+p6<-p6+xlab("Leverage hii")+ylab("Cook's Distance")
+p6<-p6+ggtitle("Cook's dist vs Leverage hii/(1-hii)")
+p6<-p6+geom_abline(slope=seq(0,3,0.5), color="gray", linetype="dashed")
+p6<-p6+theme_bw()
+
+
+p1
+p3
+p4
+p5
+p6
+```
 
