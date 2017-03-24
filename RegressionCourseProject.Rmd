@@ -2,26 +2,48 @@
 <h4> <center> Connor Gaspar -- March 23, 2017 </center> </h4>
 ***
 
-<h4> Executive Summary </h4>
-The analysis performed utilizes the Motor Trend (US) magazine 1974 automobile data. This data was used for the purpose of regressing the given set of variables with respect to fuel consumption (as defined by mpg) Of particular interest to this topic, the following questions will be answered:
+<b><h4> Executive Summary </h4></b>
+The analysis performed utilizes the Motor Trend (US) magazine 1974 automobile data. This data was used for the purpose of regressing the measured set of variables with respect to fuel consumption (as defined by mpg). In particular, the following questions will be addressed:
 
 * Is an automatic or manual transmission better for MPG
 * Quantify the MPG difference between automatic and manual transmissions
 
-To this end exploratory data analysis, regression analysis and hypothesis testing will be performed to make inferences from this dataset. 
+To this end exploratory data analysis, regression analysis and hypothesis testing will be performed to make inferences from this data set. 
 
-### ADD MORE HERE ###
+#### ADD MORE Exec Summary HERE ####
+***
 
-```{r setup}
-```
-
-```{r initialize, include=F, warning=F, message=F}
-require(knitr); require(rmarkdown); require(ggplot2); require(ggthemes); require(UsingR)
+```{r Initialize, include=F, warning=F, message=F}
+require(knitr); require(rmarkdown); require(ggplot2)
+require(ggthemes); require(UsingR); require(GGally)
 data(mtcars) # Load data
 mtcars[,c(8:9)] <- lapply(mtcars[,c(8:9)], factor) # Converting am && vs to factor type
+mtcars$am <- factor(mtcars$am, label=c("automatic", "manual"))
 ```
 
+<b><h4> Data Overview </h4></b>
 
-```{r}
+Below is the first five rows of the `mtcars` data set. Our response variable is `mpg` and our critical regressor is `am`
+
+*N.B.* The variables `am` and `vs`  have been modified from continuous (numeric) to categorical (factor) to reflect their binary nature. For `am`, labels have been applied to enhance interpretability of the factor levels.
+
+
+```{r Data-Head-Overview}
 kable(head(mtcars), align="c")
 ```
+
+
+
+```{r Data-Exploration, message=FALSE, warning=FALSE}
+ggpairs(mtcars,
+        lower=list(continuous = "smooth",
+                   combo = "box",
+                   discrete = "blank",
+                   mapping=aes(colour=am)),
+        
+        diag=list(continuous="barDiag"),
+        
+        axisLabels="show")
+```
+
+From the first row of the pairwise plot we can see a clear difference between fuel consumption by automatic and manual transmission. For the continuous variable scatterplots on the bottom, points are coloured by the level of `am`. Thus, we can see overt heterogeneity in the level of the response variable thereby signifiying interactions with our critical regressor. 
